@@ -1,0 +1,16 @@
+.chat .user {
+	display: flex;
+}
+
+.chat .user.multiline {
+	display: initial;
+}
+
+.chat .user .author {
+	font-weight: bold;
+	margin-right: 1vmax;
+}
+
+.chat .user .message.hint {
+	opacity: 0.5;
+}

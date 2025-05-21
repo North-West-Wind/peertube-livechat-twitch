@@ -1,0 +1,52 @@
+.config {
+	padding: 2vmax;
+}
+
+.config h1 {
+	margin: 0;
+}
+
+.config .field-title {
+	display: flex;
+	align-items: baseline;
+}
+
+.config .field-title p {
+	margin-left: 1vmax;
+	flex: 1;
+}
+
+.config h2 {
+	margin-bottom: .1vmax;
+}
+
+.config input[type="text"] {
+	font-size: 1vmax;
+	padding: .75vmax;
+	width: 90%;
+	border-width: .2vmax;
+	border-radius: .2vmax;
+	border-color: var(--border-color);
+	border-style: solid;
+	transition: border-color .25s ease;
+}
+
+.config input[type="text"]:focus-visible {
+	border-color: var(--border-highlight-color);
+	outline: none;
+}
+
+.config .save {
+	width: fit-content;
+	border-radius: .5vmax;
+	padding: .5vmax 1vmax;
+	margin-top: 1vmax;
+	background-color: var(--button-color);
+	user-select: none;
+	cursor: pointer;
+	transition: filter .25s ease;
+}
+
+.config .save:hover {
+	filter: brightness(80%);
+}
