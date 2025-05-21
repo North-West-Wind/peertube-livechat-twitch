@@ -1,5 +1,6 @@
 {
-  "name": "peertube-livechat-twitch",
+  "name": "peertube-to-twitch",
+	"description": "Bridge PeerTube livechat messages to Twitch",
   "private": true,
   "version": "0.0.1",
   "type": "module",
