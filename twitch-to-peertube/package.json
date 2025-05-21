@@ -1,0 +1,24 @@
+{
+  "name": "twitch-to-peertube",
+  "description": "Bridge Twitch chat messages to PeerTube livechat",
+  "version": "0.0.1",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "tsx src/index.ts"
+  },
+  "keywords": [],
+  "author": "NorthWestWind",
+  "license": "GPL-3.0-only",
+  "devDependencies": {
+    "@types/node": "^20.17.50",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@twurple/auth": "^7.3.0",
+    "@twurple/chat": "^7.3.0",
+    "dotenv": "^16.5.0",
+    "peertube-livechat-xmpp": "^0.0.12",
+    "press-any-key": "^1.1.0"
+  }
+}
