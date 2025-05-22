@@ -26,7 +26,7 @@ export default function ChatPage() {
 						<div class="author" style={{ color: body.author!.color }}>{body.author!.name}</div>
 						<div class="message hint">(multi-line)</div>
 					</div>
-					{lines.map((line, ii) => <div class="message" key={ii}>{line}</div>)}
+					{lines.map((line, ii) => <div class="message multiline" key={ii}>{line}</div>)}
 				</div>
 			}
 			return <div class="user" key={ii}>

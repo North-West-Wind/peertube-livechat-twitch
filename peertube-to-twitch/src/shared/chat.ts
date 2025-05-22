@@ -1,4 +1,4 @@
-import { PeerTubeXMPPClient } from "peertube-livechat-xmpp";
+import { Message, PeerTubeXMPPClient } from "peertube-livechat-xmpp";
 
 // These are Twitch colors
 // They should in theory work great with either light or dark background
@@ -32,6 +32,8 @@ class ChatManager extends EventTarget {
 	instance: string;
 	roomId: string;
 	xmpp?: PeerTubeXMPPClient;
+	colors = new Map<string, string>(); // occupant id -> hex color
+	backfilling = false;
 
 	constructor() {
 		super();
@@ -74,23 +76,42 @@ class ChatManager extends EventTarget {
 
 	async setupXmpp() {
 		if (this.xmpp) await this.xmpp.stop();
-		const colors = new Map<string, string>(); // occupant id -> color
+		this.backfilling = false;
+		this.colors.clear();
 		this.xmpp = new PeerTubeXMPPClient(this.instance, this.roomId, { nickname: "Twitch Bridge " + Math.floor(Math.random() * 10000) });
 	
 		this.xmpp.on("ready", () => {
 			chatManager.append("system", "Connected to " + this.roomId);
 		});
+
+		this.xmpp.on("oldMessage", (message) => {
+			// Backfilling
+			if (!this.backfilling) {
+				this.backfilling = true;
+				chatManager.append("system", "Backfilling...");
+			}
+			this.handleMessage(message);
+		});
 	
 		this.xmpp.on("message", (message) => {
-			const author = message.author();
-			if (!author) return;
-			let color = colors.get(author.occupantId);
-			if (!color) {
-				color = AVAILABLE_COLORS[Math.floor(Math.random() * AVAILABLE_COLORS.length)];
-				colors.set(author.occupantId, color);
+			// Stop backfilling
+			if (this.backfilling) {
+				this.backfilling = false;
+				chatManager.append("system", "Backfilling completed");
 			}
-			this.append("user", message.body, { name: author.nickname, color });
+			this.handleMessage(message);
 		});
+	}
+
+	private handleMessage(message: Message) {
+		const author = message.author();
+		if (!author) return;
+		let color = this.colors.get(author.occupantId);
+		if (!color) {
+			color = AVAILABLE_COLORS[Math.floor(Math.random() * AVAILABLE_COLORS.length)];
+			this.colors.set(author.occupantId, color);
+		}
+		this.append("user", message.body, { name: author.nickname, color });
 	}
 
 	append(type: ChatType, message: string, author?: { name: string, color: string }) {

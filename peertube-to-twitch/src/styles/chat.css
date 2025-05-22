@@ -11,6 +11,13 @@
 	margin-right: 1vmax;
 }
 
-.chat .user .message.hint {
+.chat .user .message.hint, .chat .system {
 	opacity: 0.5;
+}
+
+.chat .user .message.multiline {
+	padding-left: 1vmax;
+	border-left-style: solid;
+	border-left-color: #777;
+	border-left-width: 0.25vmax;
 }
