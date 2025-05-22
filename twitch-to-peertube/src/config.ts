@@ -4,6 +4,7 @@ import * as path from "path";
 type Config = {
 	instance: string;
 	roomId: string;
+	twitchChannel: string;
 }
 
 export function getConfig(dataDir: string) {

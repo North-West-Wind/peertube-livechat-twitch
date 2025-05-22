@@ -1,55 +1,72 @@
-import { AppTokenAuthProvider, RefreshingAuthProvider, StaticAuthProvider } from "@twurple/auth";
-import pressAnyKey from "press-any-key";
+import { StaticAuthProvider } from "@twurple/auth";
+import { existsSync, readFileSync, writeFileSync } from "fs";
+import * as path from "path";
 
 const CLIENT_ID = "cn9f0aw2nr0uiq79ou5b29mtiajssr";
+const SCOPES = ["user:read:chat", "chat:read"];
 
-type AuthFile = {
-	accessToken: string;
-	refreshToken: string;
+type AuthData = {
+	aToken: string;
+	rToken: string;
+	tokenType: string;
+	expiresAt: number;
 }
 
 export class TwitchAuthenticator {
-	auth?: {
-		aToken: string;
-		rToken: string;
-		tokenType: string;
-		expiresAt: number;
-	};
+	readonly authFile: string;
+	auth?: AuthData;
 
 	constructor(dataDir: string) {
-
+		this.authFile = path.join(dataDir, "auth.json");
+		if (existsSync(this.authFile)) {
+			try {
+				this.auth = JSON.parse(readFileSync(this.authFile, "utf8")) as AuthData;
+			} catch (err) {
+				console.error(err);
+			}
+		}
 	}
 
 	private async askLogin() {
 		let params = new URLSearchParams({
 			client_id: CLIENT_ID,
-			scopes: ["chat:read"].join(" ")
+			scopes: SCOPES.join(" ")
 		});
 
-		let res = await fetch("https://id.twitch.tv/oauth2/device?" + params);
+		let res = await fetch("https://id.twitch.tv/oauth2/device?" + params, { method: "POST" });
 		if (!res.ok) throw new Error("Start Device Code Flow failed. " + res.status);
-		const { device_code: device, user_code: code, verification_uri: uri } = await res.json();
+		const { device_code: device, user_code: code, verification_uri: uri, expires_in: expireSecond } = await res.json();
+		const timesUp = Date.now() + expireSecond * 1000;
 
 		console.log("Login by following these steps:");
 		console.log("1. Go to this link: " + uri);
 		console.log("2. Enter this code if not automatically filled: " + code);
 		console.log("3. Authorize the login");
-		await pressAnyKey("When you are done, press any key");
 
 		params.append("device_code", device);
 		params.append("grant_type", "urn:ietf:params:oauth:grant-type:device_code");
 		
-		res = await fetch("https://id.twitch.tv/oauth2/token?" + params);
-		if (!res.ok) throw new Error("Token obtainment failed. " + res.status);
-		const result = await res.json();
-		if (result.status && result.message) throw new Error(result.status + " " + result.message);
-
-		this.auth = {
-			aToken: result.access_token,
-			rToken: result.refresh_token,
-			tokenType: result.token_type,
-			expiresAt: Date.now() + result.expires_in * 1000
-		};
+		while (true) {
+			if (Date.now() > timesUp) throw new Error("No authorization in time");
+			
+			console.log("Checking if authorized...");
+			res = await fetch("https://id.twitch.tv/oauth2/token?" + params, { method: "POST" });
+			const result = await res.json();
+			if (result.message == "authorization_pending")
+				await this.sleep(10000);
+			else if (result.access_token) {
+				this.auth = {
+					aToken: result.access_token,
+					rToken: result.refresh_token,
+					tokenType: result.token_type,
+					expiresAt: Date.now() + result.expires_in * 1000
+				};
+				this.saveToFile();
+				console.log("Obtained authorization!");
+				break;
+			} else if (result.message) throw new Error(result.message);
+			else throw new Error("Authorization failed");
+		}
 	}
 
 	private async tryRefresh() {
@@ -62,7 +79,7 @@ export class TwitchAuthenticator {
 			refresh_token: this.auth.rToken
 		});
 
-		const res = await fetch("https://id.twitch.tv/oauth2/token?" + params);
+		const res = await fetch("https://id.twitch.tv/oauth2/token?" + params, { method: "POST" });
 		if (!res.ok) throw new Error("Token refreshing failed. " + res.status);
 		const result = await res.json();
 		if (result.status && result.message) throw new Error(result.status + " " + result.message);
@@ -73,12 +90,27 @@ export class TwitchAuthenticator {
 			tokenType: result.token_type,
 			expiresAt: Date.now() + result.expires_in * 1000
 		};
+		this.saveToFile();
 	}
 
 	async getAuthProvider() {
 		if (!this.auth) await this.askLogin();
 		else if (Date.now() > this.auth.expiresAt) await this.tryRefresh();
 
-		return new StaticAuthProvider(CLIENT_ID, this.auth!.aToken, ["chat:read"]);
+		return new StaticAuthProvider(CLIENT_ID, this.auth!.aToken, SCOPES);
+	}
+
+	private sleep(ms: number) {
+		return new Promise<void>((res, rej) => {
+			process.once("SIGTERM", () => rej("Terminated by user"));
+			process.once("SIGINT", () => rej("Interrupted by user"));
+			setTimeout(res, ms);
+		});
+	}
+
+	private saveToFile() {
+		if (!this.auth) return;
+		console.log("Saving auth to file...");
+		writeFileSync(this.authFile, JSON.stringify(this.auth));
 	}
 }

@@ -18,7 +18,7 @@
     "@twurple/auth": "^7.3.0",
     "@twurple/chat": "^7.3.0",
     "dotenv": "^16.5.0",
-    "peertube-livechat-xmpp": "^0.0.12",
+    "peertube-livechat-xmpp": "^0.0.17",
     "press-any-key": "^1.1.0"
   }
 }
