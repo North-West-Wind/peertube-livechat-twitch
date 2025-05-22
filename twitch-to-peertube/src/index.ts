@@ -28,16 +28,25 @@ swappable.onSwap((chatClient) => {
 		}
 	
 		const xmpp = xmppClients.get(user)!;
-		const response = await xmpp.message(text);
-		messages.set(message.id, { originId: response.originId, occupantId: response.authorId });
+		try {
+			const response = await xmpp.message(text);
+			messages.set(message.id, { originId: response.originId, occupantId: response.authorId });
+		} catch (err) {
+			console.error(err);
+		}
 	});
 
 	chatClient.onMessageRemove(async (_channel, id, _message) => {
 		if (messages.has(id)) {
 			const { originId, occupantId } = messages.get(id)!;
 			const xmpp = xmppClients.get(occupantId);
-			if (xmpp)
-				await xmpp.delete(originId);
+			if (xmpp) {
+				try {
+					await xmpp.delete(originId);
+				} catch (err) {
+					console.error(err);
+				}
+			}
 
 			messages.delete(id);
 		}
