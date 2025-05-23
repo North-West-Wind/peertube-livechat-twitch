@@ -35,10 +35,13 @@ server.on("connection", socket => {
 			const immKey = key;
 			const details = xmppClients.get(immKey)!;
 			details.connected--;
-			if (!isNaN(wsKeepAlive) && wsKeepAlive > 0)
+			console.log(`Client disconnection for ${immKey}. Currently connected: ${details.connected}`);
+			if (details.connected == 0 && !isNaN(wsKeepAlive) && wsKeepAlive > 0) {
 				details.timeout = setTimeout(() => {
 					xmppClients.delete(immKey);
 				}, wsKeepAlive);
+				console.log(`Scheduled deletion of ${immKey} in ${wsKeepAlive}`);
+			}
 		}
 		xmpp?.removeListener("oldMessage", oldMessageListener);
 		xmpp?.removeListener("message", newMessageListener);
@@ -69,9 +72,11 @@ server.on("connection", socket => {
 							details.timeout = undefined;
 						}
 						xmpp = details.client;
+						console.log(`New client connected to ${key}. Currently connected: ${details.connected}`);
 					} else {
 						xmpp = new PeerTubeXMPPClient(instance, roomId, { nickname: "Twitch Bridge #" + Math.ceil(Math.random() * 20) });
 						xmppClients.set(key, { connected: 1, client: xmpp });
+						console.log(`Opened new connection to ${key}`);
 					}
 					// Setup events to redirect to WS
 					xmpp.on("oldMessage", oldMessageListener);
@@ -91,3 +96,5 @@ server.on("connection", socket => {
 		disconnect();
 	});
 });
+
+console.log("Started websocket server at port " + port);
