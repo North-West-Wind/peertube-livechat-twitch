@@ -17,21 +17,30 @@ server.on("connection", socket => {
 
 	let key: string | undefined;
 	let xmpp: PeerTubeXMPPClient | undefined;
+	let emojiJson: string | undefined;
 
 	const onReady = () => {
-		socket.send("con");
+		if (!emojiJson) {
+			const emojis: Record<string, string> = {};
+			for (const [sn, url] of xmpp!.customEmojis.entries())
+				emojis[sn] = url;
+			emojiJson = encodeURIComponent(JSON.stringify(emojis));
+		}
+		socket.send("con " + emojiJson);
+	};
+
+	const sendMessage = (message: Message, old: boolean) => {
+		const author = message.author();
+		if (!author) return;
+		socket.send(`${old ? "old" : "new"} ${encodeURIComponent(author.occupantId)} ${encodeURIComponent(author.nickname)} ${encodeURIComponent(message.body)} `);
 	};
 
 	const onOldMessage = (message: Message) => {
-		const author = message.author();
-		if (!author) return;
-		socket.send(`old ${encodeURIComponent(author.occupantId)} ${encodeURIComponent(author.nickname)} ${encodeURIComponent(message.body)}`);
+		sendMessage(message, true);
 	};
 
 	const onNewMessage = (message: Message) => {
-		const author = message.author();
-		if (!author) return;
-		socket.send(`new ${encodeURIComponent(author.occupantId)} ${encodeURIComponent(author.nickname)} ${encodeURIComponent(message.body)}`);
+		sendMessage(message, false);
 	};
 
 	const disconnect = () => {
@@ -78,7 +87,7 @@ server.on("connection", socket => {
 						}
 						xmpp = details.client;
 						console.log(`New client connected to ${key}. Currently connected: ${details.connected}`);
-						socket.send("con");
+						onReady();
 						const messages = xmpp.messages.all();
 						(messages.length > 20 ? xmpp.messages.all().slice(-20) : messages).forEach((message, ii) => {
 							setTimeout(() => {
