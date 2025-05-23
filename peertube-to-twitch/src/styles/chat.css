@@ -9,6 +9,11 @@
 .chat .user .author {
 	font-weight: bold;
 	margin-right: 1vmax;
+	display: flex;
+}
+
+.chat .user .author div {
+	align-self: flex-end;
 }
 
 .chat .user .message.hint, .chat .system {
@@ -24,6 +29,16 @@
 
 .chat .user .message img {
 	width: 2rem;
+	margin: 0 0.25rem;
+}
+
+.chat .user .message {
+	display: flex;
+	align-items: flex-end;
+}
+
+.chat > div {
+	margin: .25rem 0;
 }
 
 .chat {

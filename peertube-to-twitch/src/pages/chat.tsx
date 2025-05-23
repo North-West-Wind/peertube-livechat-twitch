@@ -81,15 +81,21 @@ export default function ChatPage() {
 				.map(short => ({ index: message.indexOf(short), short }))
 				.filter(({ index }) => index >= 0)
 				.sort((a, b) => a.index - b.index)[0];
+			const shortCodes = new Set<string>();
 			while (firstMatch) {
 				const before = message.slice(0, firstMatch.index);
 				message = message.slice(firstMatch.index + firstMatch.short.length);
 				components.push({ type: "span", body: before }, { type: "img", body: firstMatch.short });
+				shortCodes.add(firstMatch.short);
 				firstMatch = emojis
 					.map(short => ({ index: message.indexOf(short), short }))
 					.filter(({ index }) => index >= 0)
 					.sort((a, b) => a.index - b.index)[0];
 			}
+			shortCodes.forEach(short => {
+				if (!imageCache[short])
+					socket?.send("img " + short);
+			});
 			components.push({ type: "span", body: message });
 			setBodies(bodies => bodies.concat([{ type, components, author }]));
 		};
@@ -103,7 +109,7 @@ export default function ChatPage() {
 			append("user", body, { name: nickname, color });
 		};
 
-		const connect = () => {
+		const connect = (retries = 0) => {
 			socket = new WebSocket(WEBSOCKET_URL);
 	
 			let ping = setInterval(() => {
@@ -112,8 +118,12 @@ export default function ChatPage() {
 	
 			socket.onclose = () => {
 				clearInterval(ping);
-				append("system", "Websocket disconnected! Reconnecting...");
-				socket = new WebSocket(WEBSOCKET_URL);
+				retries++;
+				const wait = Math.pow(2, retries);
+				append("system", `Websocket disconnected! Reconnecting in ${wait} seconds...`);
+				setTimeout(() => {
+					connect(retries);
+				}, wait * 1000);
 			};
 	
 			let backfilling = false;
@@ -166,6 +176,7 @@ export default function ChatPage() {
 			}
 
 			socket.onopen = () => {
+				retries = 0;
 				if (instance && roomId)
 					socket!.send(`con ${instance} ${roomId}`);
 			};
@@ -198,7 +209,7 @@ export default function ChatPage() {
 				// Multiline
 				return <div class="user multiline" key={ii}>
 					<div class="user">
-						<div class="author" style={{ color: body.author!.color }}>{body.author!.name}</div>
+						<div class="author" style={{ color: body.author!.color }}><div>{body.author!.name}</div></div>
 						<div class="message hint">(multi-line)</div>
 					</div>
 					{lineComponents.map((components, ii) => <div class="message multiline" key={ii}>
@@ -211,7 +222,7 @@ export default function ChatPage() {
 				</div>
 			}
 			return <div class="user" key={ii}>
-				<div class="author" style={{ color: body.author!.color }}>{body.author!.name}</div>
+				<div class="author" style={{ color: body.author!.color }}><div>{body.author!.name}</div></div>
 				<div class="message">
 					{body.components.map(({ type, body }, ii) => {
 						if (type == "span")
