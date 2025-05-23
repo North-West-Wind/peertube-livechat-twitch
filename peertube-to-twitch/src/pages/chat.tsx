@@ -21,7 +21,9 @@ const AVAILABLE_COLORS = [
 	"#00ff7f"
 ];
 
-const WEBSOCKET_URL = "wss://services.northwestw.in/peertube-to-twitch";
+const HOST = "services.northwestw.in/peertube-to-twitch";
+const WEBSOCKET_URL = `wss://${HOST}`;
+const EMPTY_IMAGE = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
 
 type ChatType = "system" | "user";
 type AppendEventBodyComponent = { type: "span" | "img", body: string };
@@ -33,6 +35,7 @@ type AppendEventBody = {
 
 export default function ChatPage() {
 	const [bodies, setBodies] = useState<AppendEventBody[]>([]);
+	const [imageCache, setImageCache] = useState<Record<string, string>>({}); // short name -> base64
 
 	useEffect(() => {
 		//let instance: string | undefined;
@@ -41,7 +44,7 @@ export default function ChatPage() {
 		let instance = "peertube.wtf";
 		let roomId = "7f85efe2-07bb-4e93-9008-c6e20efbbf08";
 		let socket: WebSocket | undefined;
-		const emojis = new Map<string, string>();
+		const emojis = new Set<string>();
 
 		const loadConfig = () => {
 			if (Twitch.ext.configuration.broadcaster) {
@@ -81,7 +84,7 @@ export default function ChatPage() {
 			while (firstMatch) {
 				const before = message.slice(0, firstMatch.index);
 				message = message.slice(firstMatch.index + firstMatch.short.length);
-				components.push({ type: "span", body: before }, { type: "img", body: emojis.get(firstMatch.short)! });
+				components.push({ type: "span", body: before }, { type: "img", body: firstMatch.short });
 				firstMatch = Array.from(emojis.keys())
 					.map(short => ({ index: message.indexOf(short), short }))
 					.filter(({ index }) => index >= 0)
@@ -123,9 +126,8 @@ export default function ChatPage() {
 						if (args.length >= 1) {
 							emojis.clear();
 							try {
-								const data: Record<string, string> = JSON.parse(decodeURIComponent(args[0]));
-								for (const [sn, url] of Object.entries(data))
-									emojis.set(sn, url);
+								const data: string[] = JSON.parse(decodeURIComponent(args[0]));
+								data.forEach(short => emojis.add(short));
 							} catch (err) {
 								console.error(err);
 							}
@@ -152,6 +154,13 @@ export default function ChatPage() {
 							append("system", "Backfilling completed");
 						}
 						handleMessage(occupantId, nickname, body);
+						break;
+					}
+					case "img": {
+						if (args.length < 2) break;
+						const [short, data] = args;
+						imageCache[short] = data;
+						setImageCache({ ...imageCache });
 						break;
 					}
 				}
@@ -197,7 +206,7 @@ export default function ChatPage() {
 						{components.map(({ type, body }, ii) => {
 							if (type == "span")
 								return <span key={ii}>{body}</span>
-							return <img key={ii} src={body} />
+							return <img key={ii} src={imageCache[body] ?? EMPTY_IMAGE} />
 						})}
 					</div>)}
 				</div>
@@ -208,7 +217,7 @@ export default function ChatPage() {
 					{body.components.map(({ type, body }, ii) => {
 						if (type == "span")
 							return <span key={ii}>{body}</span>
-						return <img key={ii} src={body} />
+						return <img key={ii} src={imageCache[body] ?? EMPTY_IMAGE} />
 					})}
 				</div>
 			</div>

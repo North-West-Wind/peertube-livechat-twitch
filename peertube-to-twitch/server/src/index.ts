@@ -8,6 +8,7 @@ if (isNaN(port)) port = 8180;
 const wsKeepAlive = parseInt(process.env.WS_KEEP_ALIVE || "0");
 
 const xmppClients = new Map<string, { connected: number, client: PeerTubeXMPPClient, timeout?: NodeJS.Timeout }>(); // concat of instance and roomid -> client
+const peertubeEmojis = new Map<string, Record<string, { url: string, cache?: string }>>();
 
 const server = new WebSocketServer({ port });
 server.on("connection", socket => {
@@ -17,16 +18,13 @@ server.on("connection", socket => {
 
 	let key: string | undefined;
 	let xmpp: PeerTubeXMPPClient | undefined;
-	let emojiJson: string | undefined;
 
 	const onReady = () => {
-		if (!emojiJson) {
-			const emojis: Record<string, string> = {};
-			for (const [sn, url] of xmpp!.customEmojis.entries())
-				emojis[sn] = url;
-			emojiJson = encodeURIComponent(JSON.stringify(emojis));
+		let emojiData = "";
+		if (key && peertubeEmojis.has(key)) {
+			emojiData = " " + encodeURIComponent(JSON.stringify(Array.from(Object.keys(peertubeEmojis.get(key!)!))));
 		}
-		socket.send("con " + emojiJson);
+		socket.send("con" + emojiData);
 	};
 
 	const sendMessage = (message: Message, old: boolean) => {
@@ -99,12 +97,41 @@ server.on("connection", socket => {
 					} else {
 						xmpp = new PeerTubeXMPPClient(instance, roomId, { nickname: "Twitch Bridge #" + Math.ceil(Math.random() * 20) });
 						xmppClients.set(key, { connected: 1, client: xmpp });
+						// Compute emojis once
+						const emojis: Record<string, { url: string }> = {};
+						for (const [sn, url] of xmpp!.customEmojis.entries())
+							emojis[sn] = { url };
+						peertubeEmojis.set(key, emojis);
 						console.log(`Opened new connection to ${key}`);
 					}
 					// Setup events to redirect to WS
 					xmpp.on("ready", onReady);
 					xmpp.on("oldMessage", onOldMessage);
 					xmpp.on("message", onNewMessage);
+				}
+				break;
+			}
+			case "img": {
+				if (args.length < 1) socket.send("err no-args");
+				else {
+					if (key && peertubeEmojis.has(key)) {
+						const emojis = peertubeEmojis.get(key)!;
+						if (!emojis[args[0]])
+							socket.send(`img ${args[0]}`);
+						else if (emojis[args[0]].cache)
+							socket.send(`img ${args[0]} ${emojis[args[0]].cache}`);
+						else {
+							fetch(emojis[args[0]].url).then(async res => {
+								const blob = await res.arrayBuffer();
+								const contentType = res.headers.get('content-type');
+								emojis[args[0]].cache = `data:${contentType};base64,${Buffer.from(blob).toString('base64')}`;
+								socket.send(`img ${args[0]} ${emojis[args[0]].cache}`);
+							}).catch(err => {
+								console.error(err);
+								socket.send(`img ${args[0]}`);
+							});
+						}
+					}
 				}
 				break;
 			}
