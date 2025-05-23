@@ -1,7 +1,0 @@
-- Testing Extension cannot be used by viewers
-	- Solution 1: Publish
-	- Solution 2: Double bot
-- Extension doesn't support all PeerTube instances
-	- Solution: Backend
-- Bridge emotes
-- Firebot compilation

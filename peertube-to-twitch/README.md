@@ -1,6 +1,8 @@
 # peertube-to-twitch
 This is a Twitch extension that shows PeerTube chat on a Twitch stream as a component. If it is successfully reviewed and published, it will be named "PeerTube Bridge".
 
+I may scrap this idea because Twitch is probably not too happy about bridging with PeerTube. In that case, use `double-bridge` instead.
+
 ## Configuration
 This extension is meant to be used by the streamer. The streamer must configure the following (only) 2 options for it to work:
 - Your PeerTube instance URL
