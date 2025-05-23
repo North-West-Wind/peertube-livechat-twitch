@@ -1,18 +1,122 @@
 import "../styles/chat.css";
 import { useEffect, useState } from "preact/hooks";
-import chatManager, { type AppendEventBody } from "../shared/chat";
+
+// These are Twitch colors
+// They should in theory work great with either light or dark background
+const AVAILABLE_COLORS = [
+	"#ff0000",
+	"#0000ff",
+	"#008000",
+	"#b22222",
+	"#ff7f50",
+	"#9acd32",
+	"#ff4500",
+	"#2e8b57",
+	"#daa520",
+	"#d2691e",
+	"#5f9ea0",
+	"#1e90ff",
+	"#ff69b4",
+	"#8a2be2",
+	"#00ff7f"
+];
+
+const WEBSOCKET_URL = "wss://services.northwestw.in/peertube-to-twitch";
+
+type ChatType = "system" | "user";
+type AppendEventBody = {
+	type: ChatType;
+	message: string;
+	author?: { name: string, color: string };
+}
 
 export default function ChatPage() {
 	const [bodies, setBodies] = useState<AppendEventBody[]>([]);
 
 	useEffect(() => {
-		const onAppend = (ev: CustomEventInit<AppendEventBody>) => {
-			if (ev.detail)
-				setBodies(bodies => bodies.concat([ev.detail!]));
-		}
+		const colors = new Map<string, string>(); // occupant id -> hex color
+		const append = (type: ChatType, message: string, author?: { name: string, color: string }) => {
+			setBodies(bodies => bodies.concat([{ type, message, author }]));
+		};
+		
+		const handleMessage = (occupantId: string, nickname: string, body: string) => {
+			let color = colors.get(occupantId);
+			if (!color) {
+				color = AVAILABLE_COLORS[Math.floor(Math.random() * AVAILABLE_COLORS.length)];
+				colors.set(occupantId, color);
+			}
+			append("user", body, { name: nickname, color });
+		};
 
-		chatManager.addEventListener("append", onAppend);
-		return () => chatManager.removeEventListener("append", onAppend);
+		let instance: string | undefined;
+		let roomId: string | undefined;
+
+		const connect = () => {
+			let socket = new WebSocket(WEBSOCKET_URL);
+	
+			let ping = setInterval(() => {
+				socket.send("ping");
+			}, 40000);
+	
+			socket.onclose = () => {
+				clearInterval(ping);
+				append("system", "Websocket disconnected! Reconnecting...");
+				socket = new WebSocket(WEBSOCKET_URL);
+			};
+	
+			let backfilling = false;
+			socket.onmessage = (message) => {
+				const args = (message.data as string).split(/\s+/);
+				const first = args.shift()!;
+				switch (first) {
+					case "old": {
+						if (args.length < 2) break;
+						const [occupantId, nickname, body] = args.map(encoded => decodeURIComponent(encoded));
+						// Backfilling
+						if (!backfilling) {
+							backfilling = true;
+							append("system", "Backfilling...");
+						}
+						handleMessage(occupantId, nickname, body);
+						break;
+					}
+					case "new": {
+						if (args.length < 2) break;
+						const [occupantId, nickname, body] = args.map(encoded => decodeURIComponent(encoded));
+						// Stop backfilling
+						if (backfilling) {
+							backfilling = false;
+							append("system", "Backfilling completed");
+						}
+						handleMessage(occupantId, nickname, body);
+						break;
+					}
+				}
+			}
+
+			if (instance && roomId)
+				socket.send(`con ${instance} ${roomId}`);
+	
+			Twitch.ext.configuration.onChanged(() => {
+				if (Twitch.ext.configuration.broadcaster) {
+					try {
+						const config = JSON.parse(Twitch.ext.configuration.broadcaster.content);
+						// Checking the content is an object
+						if (typeof config === 'object' && typeof config.instance === "string" && typeof config.roomId === "string") {
+							instance = config.instance;
+							roomId = config.roomId;
+							socket.send(`con ${config.instance} ${config.roomId}`);
+						}
+						else
+							console.log("Invalid config");
+					} catch (err) {
+						console.log("Invalid config");
+					}
+				}
+			});
+		};
+
+		connect();
 	}, []);
 
 	return <div class="chat">

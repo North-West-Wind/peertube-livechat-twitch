@@ -21,13 +21,13 @@ server.on("connection", socket => {
 	const oldMessageListener = (message: Message) => {
 		const author = message.author();
 		if (!author) return;
-		socket.send(`old ${encodeURIComponent(author.nickname)} ${encodeURIComponent(message.body)}`);
+		socket.send(`old ${encodeURIComponent(author.occupantId)} ${encodeURIComponent(author.nickname)} ${encodeURIComponent(message.body)}`);
 	};
 
 	const newMessageListener = (message: Message) => {
 		const author = message.author();
 		if (!author) return;
-		socket.send(`new ${encodeURIComponent(author.nickname)} ${encodeURIComponent(message.body)}`);
+		socket.send(`new ${encodeURIComponent(author.occupantId)} ${encodeURIComponent(author.nickname)} ${encodeURIComponent(message.body)}`);
 	};
 
 	const disconnect = () => {
