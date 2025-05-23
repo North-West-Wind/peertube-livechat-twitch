@@ -57,6 +57,7 @@ server.on("connection", socket => {
 			if (details.connected == 0 && !isNaN(wsKeepAlive) && wsKeepAlive > 0) {
 				details.timeout = setTimeout(() => {
 					xmppClients.delete(immKey);
+					peertubeEmojis.delete(immKey);
 				}, wsKeepAlive);
 				console.log(`Scheduled deletion of ${immKey} in ${wsKeepAlive}`);
 			}
