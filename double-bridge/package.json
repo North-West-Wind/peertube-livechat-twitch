@@ -5,13 +5,19 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "tsx src/index.ts",
-		"patch-sasl": "sed -i -e 's/console\\.log\\(.*\\);//g' node_modules/@xmpp/sasl/index.js"
+    "esbuild": "esbuild src/index.ts --bundle --platform=node --outfile=build/bundle.js",
+    "compile": "node --experimental-sea-config sea-config.json",
+    "preject": "cp $(command -v node) build/bridge",
+    "postject": "postject build/bridge NODE_SEA_BLOB bridge.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2",
+    "patch-sasl": "sed -i -e 's/console\\.log\\(.*\\);//g' node_modules/@xmpp/sasl/index.js"
   },
   "keywords": [],
   "author": "NorthWestWind",
   "license": "GPL-3.0-only",
   "devDependencies": {
     "@types/node": "^20.17.50",
+    "esbuild": "^0.25.4",
+    "postject": "^1.0.0-alpha.6",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   },
