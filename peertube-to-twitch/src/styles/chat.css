@@ -22,6 +22,10 @@
 	border-left-width: 0.25vmax;
 }
 
+.chat .user .message img {
+	width: 2rem;
+}
+
 .chat {
 	position: fixed;
 	bottom: 0;

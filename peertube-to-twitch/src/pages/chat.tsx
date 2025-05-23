@@ -24,9 +24,10 @@ const AVAILABLE_COLORS = [
 const WEBSOCKET_URL = "wss://services.northwestw.in/peertube-to-twitch";
 
 type ChatType = "system" | "user";
+type AppendEventBodyComponent = { type: "span" | "img", body: string };
 type AppendEventBody = {
 	type: ChatType;
-	message: string;
+	components: AppendEventBodyComponent[];
 	author?: { name: string, color: string };
 }
 
@@ -34,12 +35,13 @@ export default function ChatPage() {
 	const [bodies, setBodies] = useState<AppendEventBody[]>([]);
 
 	useEffect(() => {
-		let instance: string | undefined;
-		let roomId: string | undefined;
+		//let instance: string | undefined;
+		//let roomId: string | undefined;
 		// Testing
-		//let instance = "peertube.wtf";
-		//let roomId = "7f85efe2-07bb-4e93-9008-c6e20efbbf08";
+		let instance = "peertube.wtf";
+		let roomId = "7f85efe2-07bb-4e93-9008-c6e20efbbf08";
 		let socket: WebSocket | undefined;
+		const emojis = new Map<string, string>();
 
 		const loadConfig = () => {
 			if (Twitch.ext.configuration.broadcaster) {
@@ -69,7 +71,24 @@ export default function ChatPage() {
 
 		const colors = new Map<string, string>(); // occupant id -> hex color
 		const append = (type: ChatType, message: string, author?: { name: string, color: string }) => {
-			setBodies(bodies => bodies.concat([{ type, message, author }]));
+			if (type == "system")
+				return setBodies(bodies => bodies.concat([{ type, components: [{ type: "span", body: message }] }]));
+			const components: AppendEventBodyComponent[] = [];
+			let firstMatch = Array.from(emojis.keys())
+				.map(short => ({ index: message.indexOf(short), short }))
+				.filter(({ index }) => index >= 0)
+				.sort((a, b) => a.index - b.index)[0];
+			while (firstMatch) {
+				const before = message.slice(0, firstMatch.index);
+				message = message.slice(firstMatch.index + firstMatch.short.length);
+				components.push({ type: "span", body: before }, { type: "img", body: emojis.get(firstMatch.short)! });
+				firstMatch = Array.from(emojis.keys())
+					.map(short => ({ index: message.indexOf(short), short }))
+					.filter(({ index }) => index >= 0)
+					.sort((a, b) => a.index - b.index)[0];
+			}
+			components.push({ type: "span", body: message });
+			setBodies(bodies => bodies.concat([{ type, components, author }]));
 		};
 		
 		const handleMessage = (occupantId: string, nickname: string, body: string) => {
@@ -101,6 +120,16 @@ export default function ChatPage() {
 				switch (first) {
 					case "con": {
 						append("system", `Connected to ${roomId}`);
+						if (args.length >= 1) {
+							emojis.clear();
+							try {
+								const data: Record<string, string> = JSON.parse(decodeURIComponent(args[0]));
+								for (const [sn, url] of Object.entries(data))
+									emojis.set(sn, url);
+							} catch (err) {
+								console.error(err);
+							}
+						}
 						break;
 					}
 					case "old": {
@@ -139,21 +168,49 @@ export default function ChatPage() {
 
 	return <div class="chat">
 		{bodies.map((body, ii) => {
-			if (body.type == "system") return <div class="system" key={ii}>{body.message}</div>;
-			const lines = body.message.split("\n");
-			if (lines.length > 1) {
+			if (body.type == "system") return <div class="system" key={ii}>{body.components[0].body}</div>;
+			const isMultiline = body.components.some(component => component.type == "span" && component.body.includes("\n"));
+			if (isMultiline) {
+				const lineComponents: AppendEventBodyComponent[][] = [[]];
+				let index = 0;
+				body.components.forEach(component => {
+					if (component.type == "span") {
+						const lines = component.body.split("\n");
+						if (lines.length > 1) {
+							lineComponents[index].push({ type: "span", body: lines.shift()! });
+							lines.forEach(line => {
+								lineComponents.push([{ type: "span", body: line }]);
+								index++;
+							});
+						} else
+							lineComponents[index].push(component);
+					} else
+						lineComponents[index].push(component);
+				});
 				// Multiline
 				return <div class="user multiline" key={ii}>
 					<div class="user">
 						<div class="author" style={{ color: body.author!.color }}>{body.author!.name}</div>
 						<div class="message hint">(multi-line)</div>
 					</div>
-					{lines.map((line, ii) => <div class="message multiline" key={ii}>{line}</div>)}
+					{lineComponents.map((components, ii) => <div class="message multiline" key={ii}>
+						{components.map(({ type, body }, ii) => {
+							if (type == "span")
+								return <span key={ii}>{body}</span>
+							return <img key={ii} src={body} />
+						})}
+					</div>)}
 				</div>
 			}
 			return <div class="user" key={ii}>
 				<div class="author" style={{ color: body.author!.color }}>{body.author!.name}</div>
-				<div class="message">{body.message}</div>
+				<div class="message">
+					{body.components.map(({ type, body }, ii) => {
+						if (type == "span")
+							return <span key={ii}>{body}</span>
+						return <img key={ii} src={body} />
+					})}
+				</div>
 			</div>
 		})}
 	</div>;
