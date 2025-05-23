@@ -78,6 +78,15 @@ server.on("connection", socket => {
 						}
 						xmpp = details.client;
 						console.log(`New client connected to ${key}. Currently connected: ${details.connected}`);
+						socket.send("con");
+						const messages = xmpp.messages.all();
+						(messages.length > 20 ? xmpp.messages.all().slice(-20) : messages).forEach((message, ii) => {
+							setTimeout(() => {
+								const author = message.author();
+								if (!author) return;
+								socket.send(`old ${encodeURIComponent(author.occupantId)} ${encodeURIComponent(author.nickname)} ${encodeURIComponent(message.body)}`);
+							}, ii * 100);
+						});
 					} else {
 						xmpp = new PeerTubeXMPPClient(instance, roomId, { nickname: "Twitch Bridge #" + Math.ceil(Math.random() * 20) });
 						xmppClients.set(key, { connected: 1, client: xmpp });
