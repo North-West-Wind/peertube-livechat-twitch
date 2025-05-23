@@ -21,7 +21,14 @@ server.on("connection", socket => {
 
 	const onReady = () => {
 		let emojiData = "";
-		if (key && peertubeEmojis.has(key)) {
+		if (key) {
+			if (!peertubeEmojis.has(key)) {
+				// Compute emojis once
+				const emojis: Record<string, { url: string }> = {};
+				for (const [sn, url] of xmpp!.customEmojis.entries())
+					emojis[sn] = { url };
+				peertubeEmojis.set(key, emojis);
+			}
 			emojiData = " " + encodeURIComponent(JSON.stringify(Array.from(Object.keys(peertubeEmojis.get(key!)!))));
 		}
 		socket.send("con" + emojiData);
@@ -97,11 +104,6 @@ server.on("connection", socket => {
 					} else {
 						xmpp = new PeerTubeXMPPClient(instance, roomId, { nickname: "Twitch Bridge #" + Math.ceil(Math.random() * 20) });
 						xmppClients.set(key, { connected: 1, client: xmpp });
-						// Compute emojis once
-						const emojis: Record<string, { url: string }> = {};
-						for (const [sn, url] of xmpp!.customEmojis.entries())
-							emojis[sn] = { url };
-						peertubeEmojis.set(key, emojis);
 						console.log(`Opened new connection to ${key}`);
 					}
 					// Setup events to redirect to WS

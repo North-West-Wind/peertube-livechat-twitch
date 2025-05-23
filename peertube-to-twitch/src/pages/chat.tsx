@@ -44,7 +44,7 @@ export default function ChatPage() {
 		let instance = "peertube.wtf";
 		let roomId = "7f85efe2-07bb-4e93-9008-c6e20efbbf08";
 		let socket: WebSocket | undefined;
-		const emojis = new Set<string>();
+		let emojis: string[] = [];
 
 		const loadConfig = () => {
 			if (Twitch.ext.configuration.broadcaster) {
@@ -77,7 +77,7 @@ export default function ChatPage() {
 			if (type == "system")
 				return setBodies(bodies => bodies.concat([{ type, components: [{ type: "span", body: message }] }]));
 			const components: AppendEventBodyComponent[] = [];
-			let firstMatch = Array.from(emojis.keys())
+			let firstMatch = Array.from(emojis.values())
 				.map(short => ({ index: message.indexOf(short), short }))
 				.filter(({ index }) => index >= 0)
 				.sort((a, b) => a.index - b.index)[0];
@@ -85,7 +85,7 @@ export default function ChatPage() {
 				const before = message.slice(0, firstMatch.index);
 				message = message.slice(firstMatch.index + firstMatch.short.length);
 				components.push({ type: "span", body: before }, { type: "img", body: firstMatch.short });
-				firstMatch = Array.from(emojis.keys())
+				firstMatch = emojis
 					.map(short => ({ index: message.indexOf(short), short }))
 					.filter(({ index }) => index >= 0)
 					.sort((a, b) => a.index - b.index)[0];
@@ -124,10 +124,9 @@ export default function ChatPage() {
 					case "con": {
 						append("system", `Connected to ${roomId}`);
 						if (args.length >= 1) {
-							emojis.clear();
+							emojis = [];
 							try {
-								const data: string[] = JSON.parse(decodeURIComponent(args[0]));
-								data.forEach(short => emojis.add(short));
+								emojis = JSON.parse(decodeURIComponent(args[0]));
 							} catch (err) {
 								console.error(err);
 							}
