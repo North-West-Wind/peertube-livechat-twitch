@@ -4,7 +4,8 @@
   "main": "dist/index.js",
   "scripts": {
 		"build": "tsc",
-    "test": "tsx src/index.ts"
+    "test": "tsx src/index.ts",
+		"patch-sasl": "sed -i -e 's/console\\.log\\(.*\\);//g' node_modules/@xmpp/sasl/index.js"
   },
   "keywords": [],
   "author": "NorthWestWind",
