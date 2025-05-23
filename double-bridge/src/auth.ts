@@ -1,9 +1,10 @@
 import { StaticAuthProvider } from "@twurple/auth";
+import EventEmitter from "events";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import * as path from "path";
 
 const CLIENT_ID = "7cr1n72yd5xaxd8y86g8bd60petwhc";
-const SCOPES = ["user:read:chat", "chat:read", "chat:edit", "channel:bot"];
+const SCOPES = ["user:read:chat", "chat:read", "chat:edit", "channel:bot", "user:manage:chat_color"];
 
 type AuthData = {
 	aToken: string;
@@ -12,11 +13,16 @@ type AuthData = {
 	expiresAt: number;
 }
 
-export class TwitchAuthenticator {
+export interface TwitchAuthenticator {
+	on(event: "refresh", listener: (authProvider?: StaticAuthProvider) => void): this;
+}
+
+export class TwitchAuthenticator extends EventEmitter {
 	readonly authFile: string;
 	auth?: AuthData;
 
 	constructor(dataDir: string) {
+		super();
 		this.authFile = path.join(dataDir, "auth.json");
 		if (existsSync(this.authFile)) {
 			try {
@@ -61,6 +67,8 @@ export class TwitchAuthenticator {
 					tokenType: result.token_type,
 					expiresAt: Date.now() + result.expires_in * 1000
 				};
+				// Try to refresh before expiration
+				this.autoRefresh(result.expires_in * 900);
 				this.saveToFile();
 				console.log("Obtained authorization!");
 				break;
@@ -90,7 +98,16 @@ export class TwitchAuthenticator {
 			tokenType: result.token_type,
 			expiresAt: Date.now() + result.expires_in * 1000
 		};
+		// Try to refresh before expiration
+		this.autoRefresh(result.expires_in * 900);
 		this.saveToFile();
+	}
+
+	private autoRefresh(delay: number) {
+		setTimeout(async () => {
+			await this.tryRefresh();
+			this.emit("refresh", this.auth?.aToken ?  new StaticAuthProvider(CLIENT_ID, this.auth.aToken, SCOPES) : undefined);
+		}, delay);
 	}
 
 	async getAuthProvider() {

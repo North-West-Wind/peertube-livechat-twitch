@@ -4,7 +4,8 @@
   "version": "0.0.1",
   "main": "dist/index.js",
   "scripts": {
-    "test": "tsx src/index.ts"
+    "test": "tsx src/index.ts",
+		"patch-sasl": "sed -i -e 's/console\\.log\\(.*\\);//g' node_modules/@xmpp/sasl/index.js"
   },
   "keywords": [],
   "author": "NorthWestWind",
@@ -15,6 +16,7 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "@twurple/api": "^7.3.0",
     "@twurple/auth": "^7.3.0",
     "@twurple/chat": "^7.3.0",
     "dotenv": "^16.5.0",

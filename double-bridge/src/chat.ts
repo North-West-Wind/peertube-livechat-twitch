@@ -1,17 +1,19 @@
+import { ApiClient } from "@twurple/api";
 import { ChatClient, ChatClientOptions } from "@twurple/chat";
 
-export class SwappableChatClient {
-	client: ChatClient;
+export class SwappableDoubleClient {
+	apiClient?: ApiClient;
+	chatClient: ChatClient;
 	config?: ChatClientOptions;
-	private _onSwap?: (client: ChatClient) => void;
+	private _onSwap?: (client: ChatClient, api?: ApiClient) => void;
 
 	constructor(config?: ChatClientOptions) {
-		this.client = new ChatClient(config);
+		this.chatClient = new ChatClient(config);
 		this.config = config;
 	}
 
 	connect() {
-		this.client.connect();
+		this.chatClient.connect();
 	}
 
 	mergeConfig(config: ChatClientOptions) {
@@ -22,16 +24,20 @@ export class SwappableChatClient {
 	}
 
 	updateConfig(config?: ChatClientOptions) {
-		if (this.client.isConnected)
-			this.client.quit();
+		if (this.chatClient.isConnected)
+			this.chatClient.quit();
 
 		this.config = config;
-		this.client = new ChatClient(config);
+		if (this.config?.authProvider)
+			this.apiClient = new ApiClient({ authProvider: this.config.authProvider });
+		else
+			this.apiClient = undefined;
+		this.chatClient = new ChatClient(config);
 		if (this._onSwap)
-			this._onSwap(this.client);
+			this._onSwap(this.chatClient, this.apiClient);
 	}
 
-	onSwap(func?: (client: ChatClient) => void) {
+	onSwap(func?: (client: ChatClient, api?: ApiClient) => void) {
 		this._onSwap = func;
 	}
 }
