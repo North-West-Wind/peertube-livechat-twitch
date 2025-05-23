@@ -50,6 +50,9 @@ export default function ChatPage() {
 
 		let instance: string | undefined;
 		let roomId: string | undefined;
+		// Testing
+		//let instance = "peertube.wtf";
+		//let roomId = "7f85efe2-07bb-4e93-9008-c6e20efbbf08";
 
 		const connect = () => {
 			let socket = new WebSocket(WEBSOCKET_URL);
@@ -69,6 +72,10 @@ export default function ChatPage() {
 				const args = (message.data as string).split(/\s+/);
 				const first = args.shift()!;
 				switch (first) {
+					case "con": {
+						append("system", `Connected to ${roomId}`);
+						break;
+					}
 					case "old": {
 						if (args.length < 2) break;
 						const [occupantId, nickname, body] = args.map(encoded => decodeURIComponent(encoded));
@@ -94,8 +101,11 @@ export default function ChatPage() {
 				}
 			}
 
-			if (instance && roomId)
-				socket.send(`con ${instance} ${roomId}`);
+			socket.onopen = () => {
+				if (instance && roomId)
+					socket.send(`con ${instance} ${roomId}`);
+			};
+
 	
 			Twitch.ext.configuration.onChanged(() => {
 				if (Twitch.ext.configuration.broadcaster) {
