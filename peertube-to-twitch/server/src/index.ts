@@ -18,13 +18,17 @@ server.on("connection", socket => {
 	let key: string | undefined;
 	let xmpp: PeerTubeXMPPClient | undefined;
 
-	const oldMessageListener = (message: Message) => {
+	const onReady = () => {
+		socket.send("con");
+	};
+
+	const onOldMessage = (message: Message) => {
 		const author = message.author();
 		if (!author) return;
 		socket.send(`old ${encodeURIComponent(author.occupantId)} ${encodeURIComponent(author.nickname)} ${encodeURIComponent(message.body)}`);
 	};
 
-	const newMessageListener = (message: Message) => {
+	const onNewMessage = (message: Message) => {
 		const author = message.author();
 		if (!author) return;
 		socket.send(`new ${encodeURIComponent(author.occupantId)} ${encodeURIComponent(author.nickname)} ${encodeURIComponent(message.body)}`);
@@ -43,14 +47,15 @@ server.on("connection", socket => {
 				console.log(`Scheduled deletion of ${immKey} in ${wsKeepAlive}`);
 			}
 		}
-		xmpp?.removeListener("oldMessage", oldMessageListener);
-		xmpp?.removeListener("message", newMessageListener);
+		xmpp?.removeListener("ready", onReady);
+		xmpp?.removeListener("oldMessage", onOldMessage);
+		xmpp?.removeListener("message", onNewMessage);
 		xmpp = undefined;
 		key = undefined;
 	};
 
 	socket.on("message", data => {
-		const args = data.toString().split("/\s+/");
+		const args = data.toString().split(/\s+/);
 		const first = args.shift()!;
 		switch (first) {
 			case "ping": {
@@ -79,8 +84,9 @@ server.on("connection", socket => {
 						console.log(`Opened new connection to ${key}`);
 					}
 					// Setup events to redirect to WS
-					xmpp.on("oldMessage", oldMessageListener);
-					xmpp.on("message", newMessageListener);
+					xmpp.on("ready", onReady);
+					xmpp.on("oldMessage", onOldMessage);
+					xmpp.on("message", onNewMessage);
 				}
 				break;
 			}
