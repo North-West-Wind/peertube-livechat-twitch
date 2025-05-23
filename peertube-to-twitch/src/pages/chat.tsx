@@ -34,6 +34,39 @@ export default function ChatPage() {
 	const [bodies, setBodies] = useState<AppendEventBody[]>([]);
 
 	useEffect(() => {
+		let instance: string | undefined;
+		let roomId: string | undefined;
+		// Testing
+		//let instance = "peertube.wtf";
+		//let roomId = "7f85efe2-07bb-4e93-9008-c6e20efbbf08";
+		let socket: WebSocket | undefined;
+
+		const loadConfig = () => {
+			if (Twitch.ext.configuration.broadcaster) {
+				console.log(Twitch.ext.configuration.broadcaster);
+				try {
+					const config = JSON.parse(Twitch.ext.configuration.broadcaster.content);
+					// Checking the content is an object
+					if (typeof config === 'object' && typeof config.instance === "string" && typeof config.roomId === "string") {
+						instance = config.instance;
+						roomId = config.roomId;
+						console.log("Loaded config");
+						socket?.send(`con ${config.instance} ${config.roomId}`);
+					}
+					else
+						console.log("Invalid config");
+				} catch (err) {
+					console.log("Invalid config with error");
+					console.error(err);
+				}
+			} else {
+				console.log("Empty config");
+			}
+		};
+
+		loadConfig();
+		Twitch.ext.configuration.onChanged(loadConfig);
+
 		const colors = new Map<string, string>(); // occupant id -> hex color
 		const append = (type: ChatType, message: string, author?: { name: string, color: string }) => {
 			setBodies(bodies => bodies.concat([{ type, message, author }]));
@@ -48,17 +81,11 @@ export default function ChatPage() {
 			append("user", body, { name: nickname, color });
 		};
 
-		let instance: string | undefined;
-		let roomId: string | undefined;
-		// Testing
-		//let instance = "peertube.wtf";
-		//let roomId = "7f85efe2-07bb-4e93-9008-c6e20efbbf08";
-
 		const connect = () => {
-			let socket = new WebSocket(WEBSOCKET_URL);
+			socket = new WebSocket(WEBSOCKET_URL);
 	
 			let ping = setInterval(() => {
-				socket.send("ping");
+				socket?.send("ping");
 			}, 40000);
 	
 			socket.onclose = () => {
@@ -103,27 +130,8 @@ export default function ChatPage() {
 
 			socket.onopen = () => {
 				if (instance && roomId)
-					socket.send(`con ${instance} ${roomId}`);
+					socket!.send(`con ${instance} ${roomId}`);
 			};
-
-	
-			Twitch.ext.configuration.onChanged(() => {
-				if (Twitch.ext.configuration.broadcaster) {
-					try {
-						const config = JSON.parse(Twitch.ext.configuration.broadcaster.content);
-						// Checking the content is an object
-						if (typeof config === 'object' && typeof config.instance === "string" && typeof config.roomId === "string") {
-							instance = config.instance;
-							roomId = config.roomId;
-							socket.send(`con ${config.instance} ${config.roomId}`);
-						}
-						else
-							console.log("Invalid config");
-					} catch (err) {
-						console.log("Invalid config");
-					}
-				}
-			});
 		};
 
 		connect();

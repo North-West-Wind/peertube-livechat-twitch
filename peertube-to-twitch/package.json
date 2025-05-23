@@ -10,7 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "peertube-livechat-xmpp": "^0.0.13",
     "preact": "^10.26.5",
     "preact-iso": "^2.9.1"
   },
