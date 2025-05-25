@@ -14,7 +14,7 @@ The bot's username will be replaced by `{user}` and the first mention of `@{user
 You need to configure the bot's username the extension should look for. The name is case-insensitive.
 
 ## Building (Firefox)
-To build this extension, you need Node.js installed. `cd` to this directory, and do the following:
+To build this extension, you need Node.js (`npm`) installed. `cd` to this directory, and do the following:
 
 Install the required packages:
 ```bash
