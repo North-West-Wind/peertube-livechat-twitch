@@ -4,7 +4,6 @@ const log = (...data: any[]) => {
 
 log("Hello from PeerTube Bridge!");
 
-///@ts-ignore
 let getting: Promise<{ botUsername?: string }> = browser.storage.local.get("botUsername");
 getting.then(({ botUsername }) => {
 	if (!botUsername) return;

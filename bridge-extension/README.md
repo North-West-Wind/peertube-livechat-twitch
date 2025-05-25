@@ -12,3 +12,24 @@ The bot's username will be replaced by `{user}` and the first mention of `@{user
 
 ## Configuration
 You need to configure the bot's username the extension should look for. The name is case-insensitive.
+
+## Building (Firefox)
+To build this extension, you need Node.js installed. `cd` to this directory, and do the following:
+
+Install the required packages:
+```bash
+npm i
+```
+
+Compile Typescript into Javascript:
+```bash
+npm run build
+# same as running "npx tsc"
+```
+
+Package the files into XPI:
+```bash
+npm run package:firefox
+# same as running:
+# "cd firefox && mkdir -p build && zip -r -FS build/peertube-bridge.xpi * --exclude *.ts --exclude popup/*.ts"
+```

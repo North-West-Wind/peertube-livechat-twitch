@@ -2,7 +2,6 @@ const button = document.getElementById("save")!;
 const input = document.getElementById("username") as HTMLInputElement;
 
 button.onclick = () => {
-	///@ts-ignore
 	let setting: Promise<void> = browser.storage.local.set({
 		botUsername: input.value
 	});
@@ -17,7 +16,6 @@ button.onclick = () => {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-	///@ts-ignore
   let getting: Promise<{ botUsername?: string }> = browser.storage.local.get("botUsername");
 	getting.then(({ botUsername }) => {
 		input.value = botUsername || "";

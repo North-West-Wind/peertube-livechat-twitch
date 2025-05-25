@@ -1,4 +1,8 @@
+# Dependencies
 node_modules/
-build/
-bridge.js
-popup/popup.js
+
+# Building directory
+*/build/
+
+# Compiled Typescript files
+**/*.js
