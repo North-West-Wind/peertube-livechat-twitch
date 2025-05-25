@@ -2,11 +2,15 @@
   "manifest_version": 2,
   "name": "PeerTube-to-Twitch Bridge Viewer",
   "version": "1.0",
+	"author": "NorthWestWind",
 
-  "description": "Renders the Twitch bot's messages as a viewer.",
+  "description": "Renders the bridging Twitch bot's messages as a viewer.",
+	"homepage_url": "https://github.com/North-West-Wind/peertube-livechat-twitch/tree/main/bridge-extension",
 
   "icons": {
-    "64": "icons/icon-64.png"
+		"32": "icons/icon.svg",
+		"48": "icons/icon.svg",
+    "64": "icons/icon.svg"
   },
 
 	"content_scripts": [
@@ -18,7 +22,7 @@
 
 	"permissions": ["storage", "activeTab"],
 	"browser_action": {
-    "default_icon": "icons/icon-64.png",
+    "default_icon": "icons/icon.svg",
     "default_title": "PeerTube Bridge",
     "default_popup": "popup/popup.html"
   }
