@@ -1,0 +1,36 @@
+body {
+	font-family: Arial, Helvetica, sans-serif;
+	background-color: #333;
+	color: #ccc
+}
+
+#save {
+	margin-top: 1rem;
+	width: fit-content;
+	padding: .25rem .5rem;
+	border-radius: .5rem;
+	background-color: cadetblue;
+	cursor: pointer;
+	color: white;
+}
+
+#save:hover {
+	filter: brightness(80%);
+}
+
+#username {
+	padding: 1rem;
+	background-color: #444;
+	border-radius: .5rem;
+	border-style: solid;
+	border-width: .2rem;
+	border-color: #777;
+	color: white;
+	transition: all .25s ease;
+}
+
+#username:focus-visible {
+	background-color: #555;
+	outline: none;
+	border-color: #aaa;
+}

@@ -1,0 +1,25 @@
+{
+  "manifest_version": 2,
+  "name": "PeerTube-to-Twitch Bridge Viewer",
+  "version": "1.0",
+
+  "description": "Renders the Twitch bot's messages as a viewer.",
+
+  "icons": {
+    "64": "icons/icon-64.png"
+  },
+
+	"content_scripts": [
+    {
+      "matches": ["https://*.twitch.tv/*", "https://twitch.tv/*"],
+      "js": ["bridge.js"]
+    }
+  ],
+
+	"permissions": ["storage", "activeTab"],
+	"browser_action": {
+    "default_icon": "icons/icon-64.png",
+    "default_title": "PeerTube Bridge",
+    "default_popup": "popup/popup.html"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "peertube-bridge-extension",
+  "version": "1.0.0",
+  "main": "bridge.js",
+  "scripts": {
+    "build": "tsc",
+    "package": "mkdir -p build && zip -r -FS build/peertube-bridge.xpi icons/ popup/ bridge.js manifest.json --exclude popup/popup.ts"
+  },
+  "keywords": [],
+  "author": "NorthWestWind",
+  "license": "GPL-3.0-only",
+  "description": "A browser extension that makes the PeerTube bridge bot appear as a Twitch user.",
+  "devDependencies": {
+    "@types/firefox-webext-browser": "^120.0.4",
+    "typescript": "^5.8.3"
+  }
+}
