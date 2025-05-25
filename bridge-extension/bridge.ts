@@ -74,7 +74,7 @@ function init(botUsername: string) {
 					if (!nameSpan) return;
 					if (result.type == "7tv")
 						(nameSpan as HTMLElement).style.color = window.getComputedStyle(nameSpan).color;
-					nameSpan.innerHTML = name;
+					(nameSpan as HTMLElement).innerText = name;
 				});
 			}
 		});
