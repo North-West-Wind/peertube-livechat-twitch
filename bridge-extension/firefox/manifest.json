@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "PeerTube-to-Twitch Bridge Viewer",
-  "version": "1.0.0",
+  "version": "1.0.1",
 	"author": "NorthWestWind",
 
   "description": "Renders the bridging Twitch bot's messages as a viewer.",

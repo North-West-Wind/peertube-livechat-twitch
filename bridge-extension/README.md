@@ -31,5 +31,5 @@ Package the files into XPI:
 ```bash
 npm run package:firefox
 # same as running:
-# "cd firefox && mkdir -p build && zip -r -FS build/peertube-bridge.xpi * --exclude *.ts --exclude popup/*.ts"
+# "cd firefox && mkdir -p build && zip -r -FS build/peertube-bridge.xpi * -x \\*.ts -x build/"
 ```

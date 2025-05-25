@@ -4,7 +4,7 @@
   "main": "bridge.js",
   "scripts": {
     "build": "tsc",
-    "package:firefox": "cd firefox && mkdir -p build && zip -r -FS build/peertube-bridge.xpi * --exclude *.ts --exclude popup/*.ts"
+    "package:firefox": "cd firefox && mkdir -p build && zip -r -FS build/peertube-bridge.zip * -x \\*.ts -x build/"
   },
   "keywords": [],
   "author": "NorthWestWind",
