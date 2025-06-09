@@ -1,0 +1,51 @@
+@font-face {
+  font-family: Splatoon2;
+  src: url("./BlitzMain.otf");
+}
+
+body {
+	font-family: Splatoon2;
+	font-size: 2vmax;
+	background-color: #000;
+	color: #fff;
+	line-height: 1.4;
+}
+
+#app {
+	position: fixed;
+	bottom: 1rem;
+}
+
+.message {
+	display: flex;
+}
+
+.badges {
+	margin-left: .5rem;
+	display: flex;
+}
+
+.badge {
+	display: flex;
+	align-items: start;
+	margin-right: .5rem;
+}
+
+.badge img {
+	width: 2.5vmax;
+}
+
+.username {
+	font-weight: bold;
+	margin-right: .5rem;
+}
+
+.image {
+	display: inline-block;
+	margin-inline: .25rem;
+}
+
+.image img {
+	width: 2.5vmax;
+	vertical-align: top;
+}
