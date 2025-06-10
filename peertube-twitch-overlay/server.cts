@@ -61,7 +61,7 @@ app.post("/api/token", express.json(), (req, res) => {
 		res.sendStatus(400);
 		return;
 	}
-	writeFileSync(path.join(__dirname, "public/token.json"), req.body);
+	writeFileSync(path.join(__dirname, "public/token.json"), JSON.stringify(req.body, null, 2));
 	res.sendStatus(200);
 });
 

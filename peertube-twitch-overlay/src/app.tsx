@@ -3,10 +3,12 @@ import Message from './components/message';
 import { PeerTubeXMPPClient } from 'peertube-livechat-xmpp';
 import { RefreshingAuthProvider } from '@twurple/auth';
 import { ChatClient } from '@twurple/chat';
+import { ApiClient } from '@twurple/api';
 
 type ChatComponent = { type: "text" | "image", body: string };
 
 export type Chat = {
+	id: string,
 	badges: string[];
 	username: string;
 	color: string;
@@ -19,6 +21,8 @@ type Config = {
 	twitchClientSecret: string;
 	peertubeInstance: string;
 	peertubeRoom: string;
+	ignoredTwitchUsers?: string[];
+	ignoredPeertubePattern?: string;
 };
 
 // These are Twitch colors
@@ -42,44 +46,28 @@ const AVAILABLE_COLORS = [
 ];
 
 export function App() {
-	const [messages, setMessages] = useState<Chat[]>([
-		{
-			badges: ["https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png", "https://static-cdn.jtvnw.net/badges/v1/c249bc20-eb68-405a-8f6b-9f2832bc4964/3"],
-			username: "northwestwindnww",
-			color: "#ff0000",
-			components: [
-				{ type: "text", body: "test" },
-				{ type: "image", body: "https://static-cdn.jtvnw.net/emoticons/v2/emotesv2_faafc021d0d24c318e361859c84ad6e7/default/dark/4.0" },
-				{ type: "text", body: "this is a really long message that i completely made up to solely test for text wrapping for long messages" }
-			]
-		},
-		{
-			badges: ["https://joinpeertube.org/img/icons/favicon.png"],
-			username: "northwestwind",
-			color: "#00ff00",
-			components: [{ type: "text", body: "test peertube" }]
-		}
-	]);
+	const [messages, setMessages] = useState<Chat[]>([]);
 
 	useEffect(() => {
 		fetch("/config.json").then(async res => {
 			const fail = () => {
-				setMessages([{ badges: [], username: "system", color: "#777", components: [{ type: "text", body: "Failed to read config" }] }]);
+				setMessages([{ id: "", badges: [], username: "system", color: "#777", components: [{ type: "text", body: "Failed to read config" }] }]);
 			};
 			if (!res.ok) return fail();
 			try {
 				const config = await res.json() as Config;
 				if (!config) return fail();
 				if (!config.twitchChannel || !config.twitchClientId || !config.twitchClientSecret || !config.peertubeInstance || !config.peertubeRoom) {
-					setMessages([{ badges: [], username: "system", color: "#777", components: [{ type: "text", body: "Config is invalid" }] }]);
+					setMessages([{ id: "", badges: [], username: "system", color: "#777", components: [{ type: "text", body: "Config is invalid" }] }]);
 					return;
 				}
 				// PeerTube setup
 				const peertubeColor = new Map<string, string>(); // occupant id -> color
+				const peertubeRegex = config.ignoredPeertubePattern ? new RegExp(config.ignoredPeertubePattern) : undefined;
 				const xmpp = new PeerTubeXMPPClient(config.peertubeInstance, config.peertubeRoom, { nickname: "Merged Chat" });
 				xmpp.on("message", message => {
 					const author = message.author();
-					if (!author) return;
+					if (!author || peertubeRegex?.test(author.nickname)) return;
 					let color = peertubeColor.get(author.occupantId);
 					if (!color) {
 						color = AVAILABLE_COLORS[Math.floor(Math.random() * AVAILABLE_COLORS.length)];
@@ -105,6 +93,7 @@ export function App() {
 					components.push({ type: "text", body });
 					setMessages(messages => {
 						return messages.concat([{
+							id: message.id,
 							badges: ["https://joinpeertube.org/img/icons/favicon.png"],
 							username: author.nickname,
 							color,
@@ -116,12 +105,102 @@ export function App() {
 				const authProvider = new RefreshingAuthProvider({ clientId: config.twitchClientId, clientSecret: config.twitchClientSecret });
 				authProvider.onRefresh((_userId, tokenData) => fetch("/api/token", { method: "POST", body: JSON.stringify(tokenData), headers: { "Content-Type": "application/json" } }));
 				fetch("/token.json").then(async res => {
-					if (res.ok)
-						authProvider.addUserForToken(await res.json());
-				});
-				const twitch = new ChatClient({ authProvider, channels: [config.twitchChannel], readOnly: true });
-				twitch.onMessage((_channel, _user, _text, msg) => {
-					console.log(msg.userInfo);
+					if (res.ok) {
+						const id = await authProvider.addUserForToken(await res.json(), ["chat"]);
+
+						// BTTV emotes
+						const bttvEmotes: { code: string, id: string }[] = [];
+						const bttvData = (await fetch("https://api.betterttv.net/3/cached/users/twitch/" + id).then(res => res.json()));
+						bttvData.channelEmotes.forEach((emote: { code: string, id: string }) => {
+							bttvEmotes.push({ code: emote.code, id: emote.id });
+						});
+						bttvData.sharedEmotes.forEach((emote: { code: string, id: string }) => {
+							bttvEmotes.push({ code: emote.code, id: emote.id });
+						});
+
+						const api = new ApiClient({ authProvider });
+						const globalBadges = await api.chat.getGlobalBadges();
+						const channelBadges = await api.chat.getChannelBadges(id);
+						const twitch = new ChatClient({ authProvider, channels: [config.twitchChannel], readOnly: true });
+						const twitchColors = new Map<string, string>();
+						twitch.onMessage((_channel, user, text, msg) => {
+							if (config.ignoredTwitchUsers?.includes(user)) return;
+							const badges = ["https://assets.twitch.tv/assets/favicon-32-e29e246c157142c94346.png"];
+							for (const [badge, version] of msg.userInfo.badges.entries()) {
+								let found = globalBadges.find(set => set.id == badge)?.getVersion(version)?.getImageUrl(4);
+								if (found) badges.push(found);
+								else {
+									found = channelBadges.find(set => set.id == badge)?.getVersion(version)?.getImageUrl(4);
+									if (found) badges.push(found);
+								}
+							}
+							let color = msg.userInfo.color;
+							if (!color) {
+								color = twitchColors.get(msg.userInfo.userId);
+								if (!color) {
+									color = AVAILABLE_COLORS[Math.floor(Math.random() * AVAILABLE_COLORS.length)];
+									twitchColors.set(msg.userInfo.userId, color);
+								}
+							}
+							const emotes: { start: number, end: number, id: string, type: "twitch" | "bttv" }[] = [];
+							msg.emoteOffsets.forEach((poses, id) => {
+								poses.forEach(pos => {
+									const [start, end] = pos.split("-").map(pos => parseInt(pos));
+									const emote: { start: number, end: number, id: string, type: "twitch" | "bttv" } = { start, end, id, type: "twitch" };
+									if (!emotes.length) emotes.push(emote);
+									else {
+										let broke = false;
+										for (let ii = 0; ii < emotes.length; ii++) {
+											if (emotes[ii].start < start) continue;
+											emotes.splice(ii, 0, emote);
+											broke = true;
+											break;
+										}
+										if (!broke) emotes.unshift(emote);
+									}
+								});
+							});
+							bttvEmotes.forEach(emote => {
+								let index = text.indexOf(emote.code);
+								while (index >= 0) {
+									emotes.push({ start: index, end: index + emote.code.length - 1, id: emote.id, type: "bttv" });
+									index = text.indexOf(emote.code, index + emote.code.length);
+								}
+							});
+
+							const components: ChatComponent[] = [];
+							while (emotes.length) {
+								const emote = emotes.shift()!;
+								const trimmed = text.slice(emote.end + 1).trim();
+								if (trimmed) components.unshift({ type: "text", body: trimmed });
+								let url: string;
+								if (emote.type == "twitch") url = `https://static-cdn.jtvnw.net/emoticons/v2/${emote.id}/default/dark/4.0`;
+								else url = `https://cdn.betterttv.net/emote/${emote.id}/3x`;
+								components.unshift({ type: "image", body: url });
+								text = text.slice(0, emote.start);
+							}
+							components.unshift({ type: "text", body: text.trim() });
+
+							setMessages(messages => messages.concat([{
+								id: msg.id,
+								badges,
+								username: msg.userInfo.displayName,
+								color,
+								components
+							}]));
+						});
+						twitch.onMessageRemove((_channel, msgId, _msg) => {
+							setMessages(messages => {
+								const newMessages: typeof messages = [];
+								messages.forEach(message => {
+									if (message.id == msgId) return;
+									newMessages.push(message);
+								});
+								return newMessages;
+							});
+						});
+						twitch.connect();
+					}
 				});
 			} catch (err) {
 				console.error(err);

@@ -1,6 +1,6 @@
 @font-face {
   font-family: Splatoon2;
-  src: url("./BlitzMain.otf");
+  src: url("/BlitzMain.otf");
 }
 
 body {
@@ -42,7 +42,7 @@ body {
 
 .image {
 	display: inline-block;
-	margin-inline: .25rem;
+	margin-inline: .5rem;
 }
 
 .image img {

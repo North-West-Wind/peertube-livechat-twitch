@@ -81,7 +81,7 @@ swappable.onSwap((chatClient, apiClient) => {
 		if (user == botUser?.name) return;
 
 		if (!xmppClients.has(user)) {
-			const xmpp = new PeerTubeXMPPClient(config.instance, config.roomId, { nickname: message.userInfo.displayName });
+			const xmpp = new PeerTubeXMPPClient(config.instance, config.roomId, { nickname: `${message.userInfo.displayName} (Twitch)` });
 			xmppClients.set(user, xmpp);
 			await new Promise<void>(res => {
 				xmpp.on("ready", () => res());

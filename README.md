@@ -6,6 +6,7 @@ This repository houses a few components in sub-directory in order to bridge Peer
 - `peertube-to-twitch`: A Twitch extension that shows PeerTube chat on the Twitch platform
 - `twitch-to-peertube`: A program that listens to Twitch chat messages and mirrors them to PeerTube
 - `peertube-comment-livechat`: A program that listens to PeerTube comments and mirrors them to PeerTube livechat
+- `peertube-twitch-overlay`: An overlay for OBS Studio that combines both chats
 
 To use a two-way bridge, you can use the combinations like this:
 - Only `double-bridge`
