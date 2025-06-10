@@ -14,7 +14,7 @@
     "@twurple/auth": "^7.3.0",
     "@twurple/chat": "^7.3.0",
     "express": "^5.1.0",
-    "peertube-livechat-xmpp": "^0.0.18",
+    "peertube-livechat-xmpp": "^0.0.19",
     "preact": "^10.26.5"
   },
   "devDependencies": {

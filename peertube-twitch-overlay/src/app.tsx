@@ -93,12 +93,22 @@ export function App() {
 					components.push({ type: "text", body });
 					setMessages(messages => {
 						return messages.concat([{
-							id: message.id,
+							id: message.originId,
 							badges: ["https://joinpeertube.org/img/icons/favicon.png"],
 							username: author.nickname,
 							color,
 							components
 						}]);
+					});
+				});
+				xmpp.on("messageRemove", msg => {
+					setMessages(messages => {
+						const newMessages: typeof messages = [];
+						messages.forEach(message => {
+							if (message.id == msg?.originId) return;
+							newMessages.push(message);
+						});
+						return newMessages;
 					});
 				});
 				// Twitch setup
