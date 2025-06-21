@@ -5,6 +5,7 @@ import { getConfig } from "./config";
 import { SwappableDoubleClient } from "./chat";
 import { TwitchAuthenticator } from "./auth";
 import { HelixChatUserColor } from "@twurple/api";
+import EmoteTranslator from "./emote";
 
 const DATA_DIR = process.env.DATA_DIR || "data";
 mkdirSync(DATA_DIR, { recursive: true });
@@ -31,16 +32,38 @@ const COLOR_CHOICES: HelixChatUserColor[] = [
 	"yellow_green"
 ];
 
+const emoteTranslator = new EmoteTranslator();
+
 let botUser: { id: string, name: string } | undefined;
 let currentColor: HelixChatUserColor | undefined;
 const ignoredPeertubeUsers = new Set<string>();
 
 const twitchColors = new Map<string, HelixChatUserColor>(); // occupant id -> color
 const receiverClient = new PeerTubeXMPPClient(config.instance, config.roomId, { nickname: "Twitch Receiver #" + (Math.ceil(Math.random() * 20)) })
+receiverClient.on("ready", () => {
+	console.log("PeerTube is ready");
+	emoteTranslator.updatePeertube(Array.from(receiverClient.customEmojis.keys()));
+});
 receiverClient.on("message", async message => {
 	const author = message.author();
 	if (swappable.chatClient.isConnected && author && !ignoredPeertubeUsers.has(author.occupantId)) {
+		let text = message.body;
 		if (botUser) {
+			const emotes: { start: number, end: number, name: string }[] = [];
+			for (const emote of receiverClient.customEmojis.keys()) {
+				let index = text.indexOf(emote);
+				if (index >= 0) {
+					const replaced = emoteTranslator.findTwitch(emote);
+					if (!replaced) continue;
+					while (index >= 0) {
+						emotes.push({ start: index, end: index + emote.length - 1, name: replaced });
+						index = text.indexOf(emote, index + emote.length);
+					}
+				}
+			}
+			for (const emote of emotes.sort((a, b) => b.start - a.start)) {
+				text = text.slice(0, emote.start) + emote.name + text.slice(emote.end + 1);
+			}
 			if (twitchColors.has(author.occupantId)) {
 				const color = twitchColors.get(author.occupantId)!;
 				if (color != currentColor)
@@ -54,16 +77,18 @@ receiverClient.on("message", async message => {
 				await swappable.apiClient?.chat.setColorForUser(botUser.id, color);
 			}
 		}
-		await swappable.chatClient.say(config.twitchChannel, `@${author.nickname} ${message.body}`);
+		await swappable.chatClient.say(config.twitchChannel, `@${author.nickname} ${text}`);
 	}
 });
 
 const xmppClients = new Map<string, PeerTubeXMPPClient>();
 const messages = new Map<string, { originId: string, occupantId: string }>(); // twitch message id -> { origin id, occupant id }
+const deleted = new Set<string>();
 const auth = new TwitchAuthenticator(DATA_DIR);
 const swappable = new SwappableDoubleClient({ channels: [config.twitchChannel] });
 
 swappable.onSwap((chatClient, apiClient) => {
+	const bttvEmotes: { code: string, id: string }[] = [];
 	apiClient?.getTokenInfo().then(info => {
 		if (info.userId && info.userName)
 			botUser = { id: info.userId, name: info.userName };
@@ -74,11 +99,61 @@ swappable.onSwap((chatClient, apiClient) => {
 				if (color) currentColor = color as HelixChatUserColor;
 				else currentColor = undefined;
 			});
-	}).catch(console.error);
 
+
+		apiClient?.users.getUserByName(config.twitchChannel).then(async user => {
+			if (!user?.id) return;
+			// BTTV emotes
+			const bttvData = (await fetch("https://api.betterttv.net/3/cached/users/twitch/" + user.id).then(res => res.json()));
+			bttvData.channelEmotes.forEach((emote: { code: string, id: string }) => {
+				bttvEmotes.push({ code: emote.code, id: emote.id });
+			});
+			bttvData.sharedEmotes.forEach((emote: { code: string, id: string }) => {
+				bttvEmotes.push({ code: emote.code, id: emote.id });
+			});
+
+			let tier: number;
+			if (info.userId) {
+				const subbed = await apiClient.subscriptions.checkUserSubscription(info.userId, user.id);
+				tier = parseInt(subbed?.tier || "0");
+			}
+
+			const channelEmotes = await apiClient.chat.getChannelEmotes(user.id);
+			const globalEmotes = await apiClient.chat.getGlobalEmotes();
+			emoteTranslator.updateTwitch(globalEmotes.map(emote => emote.name)
+				.concat(channelEmotes.filter(emote => !emote.tier || parseInt(emote.tier) <= tier).map(emote => emote.name))
+				.concat(bttvEmotes.map(emote => emote.code)));
+		});
+	}).catch(console.error);
 
 	chatClient.onMessage(async (_channel, user, text, message) => {
 		if (user == botUser?.name) return;
+
+		const emotes: { start: number, end: number, name: string }[] = [];
+		for (const positions of message.emoteOffsets.values()) {
+			let replaced: string | undefined;
+			for (const position of positions) {
+				const [start, end] = position.split("-").map(pos => parseInt(pos));
+				if (replaced === undefined)
+					replaced = emoteTranslator.findPeertube(text.slice(start, end + 1));
+				if (!replaced) break;
+				emotes.push({ start, end, name: replaced });
+			}
+		}
+		bttvEmotes.forEach(emote => {
+			let index = text.indexOf(emote.code);
+			if (index >= 0) {
+				const replaced = emoteTranslator.findPeertube(emote.code);
+				if (!replaced) return;
+				while (index >= 0) {
+					emotes.push({ start: index, end: index + emote.code.length - 1, name: replaced });
+					index = text.indexOf(emote.code, index + emote.code.length);
+				}
+			}
+		});
+		for (const emote of emotes.sort((a, b) => b.start - a.start)) {
+			text = text.slice(0, emote.start) + emote.name + text.slice(emote.end + 1);
+		}
 
 		if (!xmppClients.has(user)) {
 			const xmpp = new PeerTubeXMPPClient(config.instance, config.roomId, { nickname: `${message.userInfo.displayName} (Twitch)` });
@@ -92,8 +167,10 @@ swappable.onSwap((chatClient, apiClient) => {
 	
 		const xmpp = xmppClients.get(user)!;
 		try {
-			const response = await xmpp.message(text);
-			messages.set(message.id, { originId: response.originId, occupantId: response.authorId });
+			if (!deleted.has(message.id)) {
+				const response = await xmpp.message(text);
+				messages.set(message.id, { originId: response.originId, occupantId: response.authorId });
+			} else deleted.delete(message.id);
 		} catch (err) {
 			console.error(err);
 		}
@@ -112,7 +189,7 @@ swappable.onSwap((chatClient, apiClient) => {
 			}
 
 			messages.delete(id);
-		}
+		} else deleted.add(id);
 	});
 
 	chatClient.onConnect(() => {

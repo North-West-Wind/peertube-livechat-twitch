@@ -5,13 +5,11 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "tsx src/index.ts",
-		"build": "npm run esbuild; npm run compile; npm run preject; npm run postject",
-
+    "build": "npm run esbuild; npm run compile; npm run preject; npm run postject",
     "esbuild": "esbuild src/index.ts --bundle --platform=node --outfile=build/bundle.js",
     "compile": "node --experimental-sea-config sea-config.json",
     "preject": "cp $(command -v node) build/bridge",
     "postject": "postject build/bridge NODE_SEA_BLOB build/bridge.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2",
-
     "patch-sasl": "sed -i -e 's/console\\.log\\(.*\\);//g' node_modules/@xmpp/sasl/index.js"
   },
   "keywords": [],
@@ -29,7 +27,8 @@
     "@twurple/auth": "^7.3.0",
     "@twurple/chat": "^7.3.0",
     "dotenv": "^16.5.0",
-    "peertube-livechat-xmpp": "^0.0.17",
-    "press-any-key": "^1.1.0"
+    "peertube-livechat-xmpp": "^0.0.19",
+    "press-any-key": "^1.1.0",
+    "stringcase": "^4.3.1"
   }
 }

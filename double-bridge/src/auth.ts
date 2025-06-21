@@ -4,7 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import * as path from "path";
 
 const CLIENT_ID = "7cr1n72yd5xaxd8y86g8bd60petwhc";
-const SCOPES = ["user:read:chat", "chat:read", "chat:edit", "channel:bot", "user:manage:chat_color"];
+const SCOPES = ["user:read:chat", "chat:read", "chat:edit", "channel:bot", "user:manage:chat_color", "user:read:subscriptions"];
 
 type AuthData = {
 	aToken: string;
